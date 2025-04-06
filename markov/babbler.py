@@ -15,14 +15,14 @@ or optioanlly with parameters: python3 babbler.py 2 tests/test1.txt 5
 """
 
 # ------------------- Implementation Details: -------------------------------
-# Our entire graph is a dictionary
+# Our entire graph is a brainGraph
 #   - keys/states are ngrams represented (could have been tuple, CANNOT be a list,
-#       because we need to use states as dictionary keys, and lists are not hashable)
+#       because we need to use states as brainGraph keys, and lists are not hashable)
 #   - values are either lists or Bags
 # Starter states are a list of words (could have been a Bag; either an ordered or unordered collection, with duplicates allowed)
 # When we pick a word, we transition to a new state
 # e.g. suppose we are using bigrams and are at the state ‘the dog’ and we pick the word ‘runs’. 
-# Our new state is ‘dog runs’, so we look up that state in our dictionary, and then get the next word, and so on…
+# Our new state is ‘dog runs’, so we look up that state in our brainGraph, and then get the next word, and so on…
 # Ending states can generate a special "stop" symbol; we will use ‘EOL’.
 #   If we generate the word ‘EOL’, then the sentence is over. Since all words are lower-case, this won’t be confused for a legitimate word
 
@@ -42,9 +42,9 @@ or optioanlly with parameters: python3 babbler.py 2 tests/test1.txt 5
 # ------------------- Tips ----------------------------------
 # read through all the comments in the below functions before beginning to code
 # remember that our states are n-grams, so whatever the n value is, that's how many words per state (including starters and stoppers)
-# our successors (the value for each key in our dictionary) are strings representing words (not states, since n-gram states could be of multiple words)
+# our successors (the value for each key in our brainGraph) are strings representing words (not states, since n-gram states could be of multiple words)
 # since we will represent your n-grams as strings, remember to separate words with a space 
-# when updating your state, make sure you don't end up with extra spaces or you won't find it in the dictionary
+# when updating your state, make sure you don't end up with extra spaces or you won't find it in the brainGraph
 # add print statements while debugging to ensure is step in your process is working as intended
 
 debugging = False
@@ -61,7 +61,7 @@ class Babbler:
         if seed != None: #seed:  
             random.seed(seed)
 
-        # need to store our sparce graph as a dictionary 
+        # need to store our sparce graph as a brainGraph 
         # need to store keys/states (as hashables, so strings or tuples, not list)
         # need to store values (lists or bag; both allow duplicates, one is ordered, the other is not)
             # graph = {
@@ -73,11 +73,11 @@ class Babbler:
 
         self.brainGraph = {}  # note that we need to be able to quickly find options for current state (so we use it for indexing, i.e. as our key)
 
-        self.starters = [] # let's track starting states as a list of strings (could have made them part of dictionary but let's have a list for debugging/testing purposes )
+        self.starters = [] # let's track starting states as a list of strings (could have made them part of brainGraph but let's have a list for debugging/testing purposes )
         # we cannot store these as part of our brain graph 
         # consider using "" as an empty state, indicating the start of a sentence
         # the list of successors would need to be entire state strings rather than just word strings as for the other states
-        # this inconsistency would require special handling of the "" key in our dictionary
+        # this inconsistency would require special handling of the "" key in our brainGraph
         # having a separate special list is a more explicit way of signaling/handling this special case
 
         self.stoppers = [] # let's also track ending states as a list of strings (don't really need it; only for debugging/testing purposes)
@@ -112,8 +112,17 @@ class Babbler:
         special symbol 'EOL' in the state transition table. 'EOL' is short for 'end of line'; since it is capitalized and all our input texts are lower-case, it will be unambiguous.
         """
 
-        pass #The pass statement is used as a placeholder for future code. When the pass statement is executed, nothing happens, but you avoid getting an error when empty code is not allowed. Empty code is not allowed in loops, function definitions, class definitions, or in if statements.
+        words = sentence.split() + ['EOL']
+        ngram = ' '.join(words[0:self.n])
+        self.starters.append(ngram)
+        self.stoppers.append(' '.join(words[-1 - self.n:-1]))
 
+        for word in words[self.n:]:
+            if ngram in self.brainGraph:
+                self.brainGraph[ngram].append(word)
+            else:
+                self.brainGraph[ngram] = [word]
+            ngram = ' '.join(ngram.split()[1:] + [word])
 
     def get_starters(self):
         """
@@ -121,7 +130,7 @@ class Babbler:
         The resulting list may contain duplicates, because one n-gram may start
         multiple sentences. Probably a one-line method.
         """
-        pass
+        return self.starters
     
 
     def get_stoppers(self):
@@ -130,7 +139,7 @@ class Babbler:
         The resulting value may contain duplicates, because one n-gram may stop
         multiple sentences. Probably a one-line method.
         """
-        pass
+        return self.stoppers
 
 
     def get_successors(self, ngram):
@@ -145,8 +154,10 @@ class Babbler:
         If n=3, then the n-gram 'the dog dances' is followed by 'quickly' one time, and 'with' two times.
         If the given state never occurs, return an empty list.
         """
-
-        pass
+        if self.has_successor(ngram):
+            return self.brainGraph[ngram]
+        else:
+            return []
     
 
     def get_all_ngrams(self):
@@ -155,7 +166,7 @@ class Babbler:
         Probably a one-line method.
         """
 
-        pass
+        return self.brainGraph.keys()
 
     
     def has_successor(self, ngram):
@@ -166,7 +177,7 @@ class Babbler:
         Probably a one-line method.
         """
 
-        pass
+        return ngram in self.brainGraph
     
     
     def get_random_successor(self, ngram):
@@ -181,7 +192,7 @@ class Babbler:
         we should get 'quickly' about 1/3 of the time, and 'with' 2/3 of the time.
         """
 
-        pass
+        return random.choice(self.get_successors(ngram))
     
 
     def babble(self):
@@ -198,9 +209,15 @@ class Babbler:
             Our example state is now: 'b c d' 
         6: Repeat from step 2.
         """
+        ng = random.choice(self.starters)
+        sentence = [ng]
 
-        pass
-            
+        while ng not in self.stoppers:
+            successor = self.get_random_successor(ng)
+            sentence.append(successor)
+            ng = ' '.join(ng.split()[1:] + [successor])
+
+        return ' '.join(sentence)            
 
 # nothing to change here; read, understand, move along
 def main(n=3, filename='tests/test1.txt', num_sentences=5):
